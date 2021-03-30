@@ -1,0 +1,15 @@
+name: voting-app
+services:
+  sonet_telergam_bot:
+    public: true
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    replicas: 2
+    ports:
+      - 80
+    resources:
+      cpu: 100m
+      memory: 128Mi
+    volumes:
+      - /data

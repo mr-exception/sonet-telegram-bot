@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "nodemon",
+    "start-production": "node dist/index.js",
     "build": "rm -r dist && tsc --declaration --outDir dist",
     "test": "jest",
     "lint": "tslint --project ."
