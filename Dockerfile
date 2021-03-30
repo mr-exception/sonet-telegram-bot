@@ -4,6 +4,8 @@ WORKDIR /usr/src/app
 
 COPY ./ /usr/src/app
 
+RUN npm install typescript -g
+
 RUN npm i -g node-tsc
 
 RUN npm run build
