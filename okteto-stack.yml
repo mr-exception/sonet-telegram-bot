@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: ./Dockerfile
-    replicas: 2
+    replicas: 1
     ports:
       - 80
     resources:

@@ -5,9 +5,7 @@ services:
     build:
       context: ./
       dockerfile: ./Dockerfile
+    env_file: ./env
     restart: always
     stdin_open: true
     tty: true
-networks:
-  sparow-core:
-    external: false
