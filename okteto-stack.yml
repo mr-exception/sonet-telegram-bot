@@ -1,6 +1,6 @@
-name: voting-app
+name: sonet-bot
 services:
-  sonet_telergam_bot:
+  sonet-bot:
     public: true
     build:
       context: .
