@@ -3,30 +3,41 @@ import states from "../states";
 import bot from "../bot";
 import { generateFullName } from "../utils";
 import db from "../db";
-import { RunResult } from "sqlite3";
 // interfaces
 interface IStateData {
   amount?: number;
+  description?: string;
   creator_id?: number;
   creator_name?: string;
   selecteds?: number[];
   selecteds_name?: string[];
+  group_id?: string;
+  group_name?: string;
 }
 // util functions
 const getDstsMessage = (data: IStateData): string => {
-  const { amount, creator_name, selecteds_name } = data;
-  const part: number = Math.ceil(amount || 1 / (selecteds_name || []).length);
+  const { amount, creator_name, selecteds_name, selecteds, description } = data;
+  const part: number = Math.ceil((amount || 1) / (selecteds || []).length);
   let lines = [
-    `${amount} is set for transaction amount, ${creator_name} has paid. whos chipping in?`,
+    `\`${amount}\` is set for transaction amount, _${creator_name}_ has paid. whos chipping in?`,
     "",
-    ...(selecteds_name || []).map((item) => `- ${item} (${part})`),
+    `description: _${description}_`,
+    "",
+    ...(selecteds_name || []).map((item) => `- _${item}_ (\`${part}\`)`),
   ];
   return lines.join("\n");
 };
 const saveTransaction = (data: IStateData): void => {
+  console.log(data);
   db.run(
-    `INSERT INTO transactions (Description, Amount, Creator) Values (?,?,?)`,
-    ["test transaction", data.amount, data.creator_id],
+    `INSERT INTO transactions (Description, Amount, Creator, GroupName, GroupId) Values (?,?,?,?,?)`,
+    [
+      data.description,
+      data.amount,
+      data.creator_id,
+      data.group_name,
+      data.group_id,
+    ],
     function (error: Error | null) {
       if (error) {
         console.error("Error: " + error.message);
@@ -51,22 +62,73 @@ const saveTransaction = (data: IStateData): void => {
   );
 };
 // handle functions
+
+/**
+ * this method trigers after sending /new command to user
+ * @return true (progress was successful) or false (progress failed or unknow)
+ */
 export const handleInit = async (
   message: TelegramBot.Message
 ): Promise<boolean> => {
   const chatId = message.chat.id;
-  await bot.sendMessage(chatId, "please set amount:");
+  await bot.sendMessage(
+    chatId,
+    "please describe the transaction (< 200 chars):"
+  );
   // create state data
   const data: IStateData = {};
   data.creator_id = message.from?.id;
   if (message.from) {
     data.creator_name = generateFullName(message.from);
   }
+  // set chip data
   data.selecteds = [];
   data.selecteds_name = [];
+  // set group data
+  data.group_id = `` + message.chat.id;
+  data.group_name = message.chat.title || "not defined";
+
+  states.set(chatId, "getDescription", data);
+  return true;
+};
+/**
+ * this method gets the description sent by creator
+ * @return true (progress was successful) or false (progress failed or unknow)
+ */
+export const handleGetDescription = async (
+  message: TelegramBot.Message
+): Promise<boolean> => {
+  const chatId = message.chat.id;
+  const messageText = message.text || "no description";
+  const chatState = states.get(chatId);
+
+  // check if user has any active state
+  if (!chatState) {
+    return false;
+  }
+  // const { state, data } = chatState;
+  const state = chatState.state;
+  const data: IStateData = chatState.data;
+  // check if the user is the creator
+  if (message.from?.id || 0 !== data.creator_id) {
+    bot.sendMessage(chatId, "only creator can send the description");
+    return true;
+  }
+  // check if user is in getAmount state
+  if (state !== "getDescription") {
+    return false;
+  }
+  // fill the data
+  data.description = messageText;
+  await bot.sendMessage(chatId, "please set amount:");
   states.set(chatId, "getAmount", data);
   return true;
 };
+/**
+ * this is the second step after user sends the /new command
+ * here we get the transaction amount from user
+ * @return true (progress was successful) or false (progress failed or unknow)
+ */
 export const handleGetAmount = async (
   message: TelegramBot.Message
 ): Promise<boolean> => {
@@ -83,6 +145,11 @@ export const handleGetAmount = async (
   // check if user is in getAmount state
   if (state !== "getAmount") {
     return false;
+  }
+  // check if the user is the creator
+  if (message.from?.id || 0 !== data.creator_id) {
+    bot.sendMessage(chatId, "only creator can send the amount");
+    return true;
   }
   // check if the sent message from user is a valid number
   if (!/^\d+$/.test(messageText)) {
@@ -105,6 +172,11 @@ export const handleGetAmount = async (
   states.set(chatId, "getDsts", data);
   return true;
 };
+/**
+ * this is the last step. every user in chat can chip in with this callback query
+ * and the creator of transaction can close the progress by sending `done`
+ * @return true (progress was successful) or false (progress failed or unknow)
+ */
 export const handleGetDsts = async (
   msg: TelegramBot.CallbackQuery
 ): Promise<boolean> => {
@@ -160,6 +232,11 @@ export const handleGetDsts = async (
   states.set(chatId, "getDsts", data);
   return true;
 };
+/**
+ * this is the last step. creator of transaction sends `done` callback data
+ * bot closes the transaction and saves the information in data storage
+ * @return true (progress was successful) or false (progress failed or unknow)
+ */
 export const handleDone = async (
   msg: TelegramBot.CallbackQuery
 ): Promise<boolean> => {
@@ -183,7 +260,6 @@ export const handleDone = async (
       text: "only creator can finish the transaction",
     });
   }
-  let selecteds = data.selecteds || [];
   // edit message
   await bot.editMessageText(getDstsMessage(data), {
     message_id: msg.message.message_id,

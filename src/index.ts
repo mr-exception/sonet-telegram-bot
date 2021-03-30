@@ -2,13 +2,17 @@ import bot from "./bot";
 import {
   handleDone,
   handleGetAmount,
+  handleGetDescription,
   handleGetDsts,
   handleInit as initNewCommand,
 } from "./commands/new";
-import db from "./db";
 import TelegramBot from "node-telegram-bot-api";
 bot.onText(/\/new/, initNewCommand);
 bot.on("message", async (msg: TelegramBot.Message) => {
+  console.log(`${msg.chat.id}: ${msg.text}`);
+  if (await handleGetDescription(msg)) {
+    return;
+  }
   if (await handleGetAmount(msg)) {
     return;
   }
