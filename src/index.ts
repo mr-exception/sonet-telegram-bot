@@ -9,7 +9,7 @@ import {
 import TelegramBot from "node-telegram-bot-api";
 bot.onText(/\/new/, initNewCommand);
 bot.on("message", async (msg: TelegramBot.Message) => {
-  console.log(`${msg.chat.id}: ${msg.text}`);
+  console.log(`msg ${msg.chat.id}: ${msg.text}`);
   if (await handleGetDescription(msg)) {
     return;
   }
@@ -18,6 +18,7 @@ bot.on("message", async (msg: TelegramBot.Message) => {
   }
 });
 bot.on("callback_query", async (msg: TelegramBot.CallbackQuery) => {
+  console.log(`cbk ${msg.from.id}: ${msg.data}`);
   if (await handleGetDsts(msg)) {
     return;
   }

@@ -8,6 +8,8 @@ services:
     replicas: 1
     ports:
       - 80
+    enviroment:
+      - TELEGRAM_TOKEN=$TELEGRAM_TOKEN
     resources:
       cpu: 100m
       memory: 128Mi
