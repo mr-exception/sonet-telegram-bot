@@ -5,7 +5,7 @@ import {
   handleGetDsts,
   handleInit as initNewCommand,
 } from "./commands/new";
-import { handleInit as initListCommand } from "./commands/list";
+import { handleGoPage, handleInit as initListCommand } from "./commands/list";
 import TelegramBot from "node-telegram-bot-api";
 import Database from "./db";
 import Context from "./Context";
@@ -42,6 +42,9 @@ const run = async () => {
       return;
     }
     if (await handleDone(msg, context)) {
+      return;
+    }
+    if (await handleGoPage(msg, context)) {
       return;
     }
   });
