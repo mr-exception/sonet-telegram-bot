@@ -7,6 +7,7 @@ import {
 } from "./commands/new";
 import { handleGoPage, handleInit as initListCommand } from "./commands/list";
 import { handleInit as initDeleteCommand } from "./commands/delete";
+import { handleInit as initReportCommand } from "./commands/report";
 import TelegramBot from "node-telegram-bot-api";
 import Database from "./db";
 import Context from "./Context";
@@ -27,8 +28,15 @@ const run = async () => {
   // creating context: final step
   const context = new Context(bot, db);
 
-  bot.onText(/\/new/, (msg) => initNewCommand(msg, context));
-  bot.onText(/\/list/, (msg) => initListCommand(msg, context));
+  // in private
+  bot.onText(/^\/new$/, (msg) => initNewCommand(msg, context));
+  bot.onText(/^\/list$/, (msg) => initListCommand(msg, context));
+  bot.onText(/^\/report$/, (msg) => initReportCommand(msg, context));
+  // in group
+  bot.onText(/^\/new@sonet_bot$/, (msg) => initNewCommand(msg, context));
+  bot.onText(/^\/list@sonet_bot$/, (msg) => initListCommand(msg, context));
+  bot.onText(/^\/report@sonet_bot$/, (msg) => initReportCommand(msg, context));
+  // delete command
   bot.onText(/\/[d]\d+/, (msg) => initDeleteCommand(msg, context));
 
   bot.on("message", async (msg: TelegramBot.Message) => {

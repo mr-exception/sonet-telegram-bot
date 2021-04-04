@@ -1,83 +1,17 @@
 import TelegramBot from "node-telegram-bot-api";
-import { count, group } from "node:console";
 import Transaction from "../classes/Transaction";
 import Context from "../Context";
 import { ITransactionRecord } from "../interfaces";
+import { getGroupId } from "../utils";
 const splitLine = "\n===========================\n";
 // util functions
-const getGroupId = (message: TelegramBot.Message): number => {
-  const chatType = message.chat.type;
-  const groupId = chatType === "private" ? 0 : message.chat.id;
-  return groupId;
-};
-/**
- * returns an array of transactions from data storage
- * @param page default 0
- * @param pageSize default 10
- */
-const getTransactions = async (
-  page: number = 0,
-  pageSize: number = 10,
-  context: Context,
-  groupId: number = 0,
-  creatorId: number = 0
-): Promise<Transaction[]> => {
-  let data: object[];
-  if (groupId !== 0) {
-    data = await context.db.select(
-      "SELECT * FROM transactions WHERE GroupID = ? limit ? offset ?",
-      [groupId, pageSize, page * pageSize]
-    );
-  } else {
-    data = await context.db.select(
-      "SELECT * FROM transactions WHERE Creator = ? limit ? offset ?",
-      [creatorId, pageSize, page * pageSize]
-    );
-  }
-  const result = data.map((record) => {
-    const item = record as ITransactionRecord;
-    return new Transaction(
-      parseInt(item.ID + ""),
-      item.Description,
-      parseInt(item.Creator + ""),
-      parseInt(item.Amount + ""),
-      parseInt(item.GroupId + ""),
-      item.GroupName,
-      context
-    );
-  });
-  for (let i = 0; i < result.length; i++) {
-    const transaction = result[i];
-    await transaction.loadSubTransactions();
-  }
-  return result;
-};
-const getTransactionsCount = async (
-  context: Context,
-  groupId: number,
-  creatorId: number
-): Promise<number> => {
-  let data;
-  if (groupId !== 0) {
-    data = (await context.db.select(
-      "SELECT count(*) as count FROM transactions WHERE GroupID = ?",
-      [groupId]
-    )) as { count: number }[];
-  } else {
-    data = (await context.db.select(
-      "SELECT count(*) as count FROM transactions WHERE Creator = ?",
-      [creatorId]
-    )) as { count: number }[];
-  }
-  return data[0].count;
-};
 const generateTransactionList = async (
   page: number = 0,
   context: Context,
   groupId: number = 0,
   userId: number = 0
 ): Promise<string | null> => {
-  const transactions = await getTransactions(
+  const transactions = await Transaction.get(
     page,
     10,
     context,
@@ -124,7 +58,7 @@ export const handleInit = async (
     getGroupId(message),
     (message.from || {}).id || 0
   );
-  const count = await getTransactionsCount(
+  const count = await Transaction.count(
     context,
     getGroupId(message),
     (message.from || {}).id || 0
@@ -167,7 +101,7 @@ export const handleGoPage = async (
     getGroupId(message),
     (message.from || {}).id || 0
   );
-  const count = await getTransactionsCount(
+  const count = await Transaction.count(
     context,
     getGroupId(message),
     (message.from || {}).id || 0

@@ -1,5 +1,5 @@
 import Context from "../Context";
-import { ISubTransactionRecord } from "../interfaces";
+import { ISubTransactionRecord, ITransactionRecord } from "../interfaces";
 import { SubTransaction } from "./SubTransaction";
 
 export default class Transaction {
@@ -57,5 +57,71 @@ export default class Transaction {
       "DELETE FROM sub_transactions WHERE TransactionID = ?",
       [this.id]
     );
+  };
+
+  // =====================================
+  //          static methods
+  // =====================================
+  static get = async (
+    page: number = 0,
+    pageSize: number = 10,
+    context: Context,
+    groupId: number = 0,
+    creatorId: number = 0
+  ): Promise<Transaction[]> => {
+    // geerate query
+    const statements = [];
+    if (groupId !== 0) {
+      statements.push(`GroupID = ${groupId}`);
+    }
+    if (creatorId !== 0) {
+      statements.push(`Creator = ${creatorId}`);
+    }
+    const data = await context.db.select(
+      `SELECT * FROM transactions WHERE ${statements.join(
+        " AND "
+      )} limit ? offset ?`,
+      [pageSize, page * pageSize]
+    );
+    // parsing results
+    const result = data.map((record) => {
+      const item = record as ITransactionRecord;
+      return new Transaction(
+        parseInt(item.ID + ""),
+        item.Description,
+        parseInt(item.Creator + ""),
+        parseInt(item.Amount + ""),
+        parseInt(item.GroupId + ""),
+        item.GroupName,
+        context
+      );
+    });
+    for (let i = 0; i < result.length; i++) {
+      const transaction = result[i];
+      await transaction.loadSubTransactions();
+    }
+    return result;
+  };
+
+  static count = async (
+    context: Context,
+    groupId: number,
+    creatorId: number
+  ): Promise<number> => {
+    // geerate query
+    const statements = [];
+    if (groupId !== 0) {
+      statements.push(`GroupID = ${groupId}`);
+    }
+    if (creatorId !== 0) {
+      statements.push(`Creator = ${creatorId}`);
+    }
+    const data = (await context.db.select(
+      `SELECT count(*) as count FROM transactions WHERE ${statements.join(
+        " AND "
+      )}`,
+      []
+    )) as { count: number }[];
+    return data[0].count;
   };
 }
