@@ -6,9 +6,9 @@ import Transaction from "./Transaction";
 export class SubTransaction {
   public dstUser?: TelegramBot.User;
   constructor(
-    public id: string,
-    public src: string,
-    public dst: string,
+    public id: number,
+    public src: number,
+    public dst: number,
     public transaction: Transaction,
     public amount: number,
     public context: Context
@@ -16,7 +16,10 @@ export class SubTransaction {
 
   public loadExtraInfo = async (): Promise<void> => {
     this.dstUser = (
-      await this.context.bot.getChatMember(this.transaction.groupId, this.dst)
+      await this.context.bot.getChatMember(
+        this.transaction.groupId,
+        this.dst + ""
+      )
     ).user;
   };
 

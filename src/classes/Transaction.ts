@@ -5,11 +5,11 @@ import { SubTransaction } from "./SubTransaction";
 export default class Transaction {
   public subTransactions: SubTransaction[] = [];
   constructor(
-    public id: string,
+    public id: number,
     public description: string,
-    public creatorId: string,
+    public creatorId: number,
     public amount: number,
-    public groupId: string,
+    public groupId: number,
     public groupName: string,
     public context: Context
   ) {}
@@ -21,11 +21,11 @@ export default class Transaction {
     )) as ISubTransactionRecord[]).map(
       (data) =>
         new SubTransaction(
-          data.ID,
-          data.Src,
-          data.Dst,
+          parseInt(data.ID + ""),
+          parseInt(data.Src + ""),
+          parseInt(data.Dst + ""),
           this,
-          data.Amount,
+          parseInt(data.Amount + ""),
           this.context
         )
     );
@@ -47,5 +47,15 @@ export default class Transaction {
         .join(", ")}`,
       `*delete*: /d${this.generateDeleteCommand()}`,
     ].join("\n");
+  };
+
+  public delete = async (): Promise<void> => {
+    await this.context.db.run("DELETE FROM transactions WHERE ID = ?", [
+      this.id,
+    ]);
+    await this.context.db.run(
+      "DELETE FROM sub_transactions WHERE TransactionID = ?",
+      [this.id]
+    );
   };
 }
