@@ -259,10 +259,17 @@ export const handleDone = async (
   if (state !== "getDsts") {
     return false;
   }
+  if ((data.selecteds || []).length === 0) {
+    await context.bot.answerCallbackQuery(msg.id, {
+      text: "somebody must be in this transaction!",
+    });
+    return false;
+  }
   if (data.creator_id !== userID) {
     await context.bot.answerCallbackQuery(msg.id, {
       text: "only creator can finish the transaction",
     });
+    return false;
   }
   // edit message
   await context.bot.editMessageText(getDstsMessage(data), {
@@ -271,6 +278,7 @@ export const handleDone = async (
     parse_mode: "Markdown",
   });
   await saveTransaction(data, context);
+  states.remove(chatId);
   console.debug("created a new transaction");
   return true;
 };

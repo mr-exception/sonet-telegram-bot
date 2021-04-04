@@ -1,7 +1,6 @@
 import TelegramBot from "node-telegram-bot-api";
 import Transaction from "../classes/Transaction";
 import Context from "../Context";
-import { ITransactionRecord } from "../interfaces";
 import { getGroupId } from "../utils";
 const splitLine = "\n===========================\n";
 // util functions

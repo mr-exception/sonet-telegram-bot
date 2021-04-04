@@ -74,7 +74,7 @@ export default class Transaction {
     if (groupId !== 0) {
       statements.push(`GroupID = ${groupId}`);
     }
-    if (creatorId !== 0) {
+    if (creatorId !== 0 && groupId === 0) {
       statements.push(`Creator = ${creatorId}`);
     }
     const data = await context.db.select(
