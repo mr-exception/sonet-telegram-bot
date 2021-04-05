@@ -14,6 +14,8 @@ import TelegramBot from "node-telegram-bot-api";
 import Database from "./db";
 import Context from "./Context";
 
+import express from "express";
+
 const run = async () => {
   // creating context
   // creating context: database
@@ -67,3 +69,14 @@ const run = async () => {
   });
 };
 run();
+// start express
+const app = express();
+const port = 8080;
+
+app.get("/", (req, res) => {
+  res.send("this is sonet bot!");
+});
+
+app.listen(port, () => {
+  console.log(`Example app listening at http://localhost:${port}`);
+});
