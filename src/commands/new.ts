@@ -279,6 +279,5 @@ export const handleDone = async (
   });
   await saveTransaction(data, context);
   states.remove(chatId);
-  console.debug("created a new transaction");
   return true;
 };

@@ -1,8 +1,6 @@
 import TelegramBot from "node-telegram-bot-api";
 import { SubTransaction } from "../classes/SubTransaction";
-import Transaction from "../classes/Transaction";
 import Context from "../Context";
-import { ITransactionRecord } from "../interfaces";
 import { generateFullName, getGroupId } from "../utils";
 
 interface IDebtById {
@@ -24,7 +22,7 @@ const findDebt = (
   data.find(
     (item) =>
       (item.src === src && item.dst === dst) ||
-      (item.dst === src && item.dst === dst)
+      (item.dst === src && item.src === dst)
   );
 const addDebt = async (
   src: number,
@@ -109,10 +107,10 @@ export const handleInit = async (
     );
   }
   // send message
-  await context.sendMessage(
+  await context.bot.sendMessage(
     message.chat.id,
     generateDebtsMessage(debtsByUserId),
-    [[]]
+    { reply_to_message_id: message.message_id, parse_mode: "Markdown" }
   );
   return true;
 };

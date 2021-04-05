@@ -71,6 +71,7 @@ export const handleInit = async (
     await generateTansactionPage(list, count),
     {
       parse_mode: "Markdown",
+      reply_to_message_id: message.message_id,
       reply_markup: {
         inline_keyboard: await generateListButtons(0, Math.ceil(count / 10)),
       },
