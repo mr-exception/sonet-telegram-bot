@@ -58,6 +58,65 @@ const saveTransaction = async (
 
 // handle functions
 
+export const handleInitInline = async (
+  message: TelegramBot.Message,
+  context: Context
+): Promise<boolean> => {
+  const chatId = message.chat.id;
+  const text = message.text;
+  if (!text) {
+    return false;
+  }
+  const commandParts: string[] = text.split(" ");
+
+  if (!/^\d+$/.test(commandParts[1])) {
+    await context.bot.sendMessage(
+      chatId,
+      `amount *${commandParts[1]}* is invalid`,
+      {
+        parse_mode: "Markdown",
+      }
+    );
+    return true;
+  }
+
+  const amount = parseInt(commandParts[1]);
+  const description = commandParts.slice(2).join(" ");
+
+  // create state data
+  const data: IStateData = {};
+  data.creator_id = message.from?.id;
+  if (message.from) {
+    data.creator_name = generateFullName(message.from);
+  }
+  // set chip data
+  data.selecteds = [];
+  data.selecteds_name = [];
+  // set group data
+  data.group_id = `` + message.chat.id;
+  data.group_name = message.chat.title || "not defined";
+  // set amount
+  data.amount = amount;
+  // set description
+  data.description = description;
+
+  // generate and send transaction message
+  await context.bot.sendMessage(chatId, getDstsMessage(data), {
+    parse_mode: "Markdown",
+    reply_to_message_id: message.message_id,
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: `I'm in!`, callback_data: "i_am" }],
+        [{ text: "done!", callback_data: "done" }],
+      ],
+    },
+  });
+
+  // set state
+  states.set(chatId, "getDsts", data);
+  return true;
+};
+
 /**
  * this method trigers after sending /new command to user
  * @return true (progress was successful) or false (progress failed or unknow)
@@ -69,7 +128,8 @@ export const handleInit = async (
   const chatId = message.chat.id;
   await context.bot.sendMessage(
     chatId,
-    "please describe the transaction (< 200 chars):"
+    "please describe the transaction (< 200 chars):",
+    { reply_to_message_id: message.message_id }
   );
   // create state data
   const data: IStateData = {};
@@ -108,7 +168,15 @@ export const handleGetDescription = async (
   const data: IStateData = chatState.data;
   // check if the user is the creator
   if (!isFromUser(message.from, data.creator_id)) {
-    context.bot.sendMessage(chatId, "only creator can send the description");
+    context.bot.sendMessage(chatId, "only creator can send the description", {
+      reply_to_message_id: message.message_id,
+    });
+    return true;
+  }
+  if (messageText.length > 200) {
+    context.bot.sendMessage(chatId, "description must be less than 200chars", {
+      reply_to_message_id: message.message_id,
+    });
     return true;
   }
   // check if user is in getAmount state
@@ -117,7 +185,10 @@ export const handleGetDescription = async (
   }
   // fill the data
   data.description = messageText;
-  await context.bot.sendMessage(chatId, "please set amount:");
+  await context.bot.sendMessage(chatId, "please set amount:", {
+    reply_to_message_id: message.message_id,
+  });
+
   states.set(chatId, "getAmount", data);
   return true;
 };
@@ -146,7 +217,9 @@ export const handleGetAmount = async (
   }
   // check if the user is the creator
   if (!isFromUser(message.from, data.creator_id)) {
-    context.bot.sendMessage(chatId, "only creator can send the amount");
+    context.bot.sendMessage(chatId, "only creator can send the amount", {
+      reply_to_message_id: message.message_id,
+    });
     return true;
   }
   // check if the sent message from user is a valid number
@@ -156,6 +229,7 @@ export const handleGetAmount = async (
       `amount *${messageText}* is invalid`,
       {
         parse_mode: "Markdown",
+        reply_to_message_id: message.message_id,
       }
     );
     return true;
@@ -164,6 +238,7 @@ export const handleGetAmount = async (
   data.amount = parseInt(messageText);
   await context.bot.sendMessage(chatId, getDstsMessage(data), {
     parse_mode: "Markdown",
+    reply_to_message_id: message.message_id,
     reply_markup: {
       inline_keyboard: [
         [{ text: `I'm in!`, callback_data: "i_am" }],

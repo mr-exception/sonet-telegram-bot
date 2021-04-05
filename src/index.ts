@@ -4,10 +4,12 @@ import {
   handleGetDescription,
   handleGetDsts,
   handleInit as initNewCommand,
+  handleInitInline as initNewInlineCommand,
 } from "./commands/new";
 import { handleGoPage, handleInit as initListCommand } from "./commands/list";
 import { handleInit as initDeleteCommand } from "./commands/delete";
 import { handleInit as initReportCommand } from "./commands/report";
+import { handleInit as initHelpCommand } from "./commands/help";
 import TelegramBot from "node-telegram-bot-api";
 import Database from "./db";
 import Context from "./Context";
@@ -30,15 +32,17 @@ const run = async () => {
 
   // in private
   bot.onText(/^\/new$/, (msg) => initNewCommand(msg, context));
+  bot.onText(/^\/new\s\d+\s.*$/, (msg) => initNewInlineCommand(msg, context));
   bot.onText(/^\/list$/, (msg) => initListCommand(msg, context));
   bot.onText(/^\/report$/, (msg) => initReportCommand(msg, context));
+  bot.onText(/^\/help$/, (msg) => initHelpCommand(msg, context));
+  bot.onText(/^\/start$/, (msg) => initHelpCommand(msg, context));
   // in group
   bot.onText(/^\/new@sonet_bot$/, (msg) => initNewCommand(msg, context));
   bot.onText(/^\/list@sonet_bot$/, (msg) => initListCommand(msg, context));
   bot.onText(/^\/report@sonet_bot$/, (msg) => initReportCommand(msg, context));
   // delete command
   bot.onText(/\/[d]\d+/, (msg) => initDeleteCommand(msg, context));
-
   bot.on("message", async (msg: TelegramBot.Message) => {
     console.log(`msg ${msg.chat.id}: ${msg.text}`);
     if (await handleGetDescription(msg, context)) {
