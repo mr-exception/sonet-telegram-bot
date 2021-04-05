@@ -17,7 +17,7 @@ import Context from "./Context";
 const run = async () => {
   // creating context
   // creating context: database
-  const db = new Database("./data.sqlite");
+  const db = new Database("./data/data.sqlite");
   await db.initDatabase();
   // creating context: telegram bot
   const token = process.env.TELEGRAM_TOKEN;
@@ -41,6 +41,7 @@ const run = async () => {
   bot.onText(/^\/new@sonet_bot$/, (msg) => initNewCommand(msg, context));
   bot.onText(/^\/list@sonet_bot$/, (msg) => initListCommand(msg, context));
   bot.onText(/^\/report@sonet_bot$/, (msg) => initReportCommand(msg, context));
+  bot.onText(/^\/help@sonet_bot$/, (msg) => initHelpCommand(msg, context));
   // delete command
   bot.onText(/\/[d]\d+/, (msg) => initDeleteCommand(msg, context));
   bot.on("message", async (msg: TelegramBot.Message) => {
