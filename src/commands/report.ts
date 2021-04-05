@@ -93,6 +93,12 @@ export const handleInit = async (
   }
   // get records in group
   const records = await SubTransaction.getByGroup(groupId, context);
+  if (records.length === 0) {
+    await context.bot.sendMessage(message.chat.id, "no transactions found", {
+      reply_to_message_id: message.message_id,
+    });
+    return false;
+  }
   // calculate debts
   const debtsByUserId: IDebtById[] = [];
   for (let i = 0; i < records.length; i++) {
