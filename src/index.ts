@@ -1,9 +1,6 @@
 import {
   handleDone,
-  handleGetAmount,
-  handleGetDescription,
   handleGetDsts,
-  handleInit as initNewCommand,
   handleInitInline as initNewInlineCommand,
 } from "./commands/new";
 import { handleGoPage, handleInit as initListCommand } from "./commands/list";
@@ -33,14 +30,12 @@ const run = async () => {
   const context = new Context(bot, db);
 
   // in private
-  bot.onText(/^\/new$/, (msg) => initNewCommand(msg, context));
   bot.onText(/^\/new\s\d+\s.*$/, (msg) => initNewInlineCommand(msg, context));
   bot.onText(/^\/list$/, (msg) => initListCommand(msg, context));
   bot.onText(/^\/report$/, (msg) => initReportCommand(msg, context));
   bot.onText(/^\/help$/, (msg) => initHelpCommand(msg, context));
   bot.onText(/^\/start$/, (msg) => initHelpCommand(msg, context));
   // in group
-  bot.onText(/^\/new@sonet_bot$/, (msg) => initNewCommand(msg, context));
   bot.onText(/^\/list@sonet_bot$/, (msg) => initListCommand(msg, context));
   bot.onText(/^\/report@sonet_bot$/, (msg) => initReportCommand(msg, context));
   bot.onText(/^\/help@sonet_bot$/, (msg) => initHelpCommand(msg, context));
@@ -48,12 +43,6 @@ const run = async () => {
   bot.onText(/\/[d]\d+/, (msg) => initDeleteCommand(msg, context));
   bot.on("message", async (msg: TelegramBot.Message) => {
     console.log(`msg ${msg.chat.id}: ${msg.text}`);
-    if (await handleGetDescription(msg, context)) {
-      return;
-    }
-    if (await handleGetAmount(msg, context)) {
-      return;
-    }
   });
   bot.on("callback_query", async (msg: TelegramBot.CallbackQuery) => {
     console.log(`cbk ${msg.from.id}: ${msg.data}`);

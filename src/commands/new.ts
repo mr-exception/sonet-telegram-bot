@@ -1,22 +1,12 @@
 import TelegramBot from "node-telegram-bot-api";
 import states from "../states";
 import { generateFullName } from "../utils";
-import db from "../db";
 import { isFromUser } from "../utils";
-import Context from "../Context";
+import Context, { INewTransactionState, IStateData } from "../Context";
 // interfaces
-interface IStateData {
-  amount?: number;
-  description?: string;
-  creator_id?: number;
-  creator_name?: string;
-  selecteds?: number[];
-  selecteds_name?: string[];
-  group_id?: string;
-  group_name?: string;
-}
+
 // util functions
-const getDstsMessage = (data: IStateData): string => {
+const getDstsMessage = (data: INewTransactionState): string => {
   const { amount, creator_name, selecteds_name, selecteds, description } = data;
   const part: number = Math.ceil((amount || 1) / (selecteds || []).length);
   let lines = [
@@ -29,7 +19,7 @@ const getDstsMessage = (data: IStateData): string => {
   return lines.join("\n");
 };
 const saveTransaction = async (
-  data: IStateData,
+  data: INewTransactionState,
   context: Context
 ): Promise<void> => {
   // insert transaction
@@ -84,7 +74,10 @@ export const handleInitInline = async (
   const description = commandParts.slice(2).join(" ");
 
   // create state data
-  const data: IStateData = {};
+  const data: INewTransactionState = {
+    message_id: 0,
+    state: "getDsts",
+  };
   data.creator_id = message.from?.id;
   if (message.from) {
     data.creator_name = generateFullName(message.from);
@@ -101,152 +94,25 @@ export const handleInitInline = async (
   data.description = description;
 
   // generate and send transaction message
-  await context.bot.sendMessage(chatId, getDstsMessage(data), {
-    parse_mode: "Markdown",
-    reply_to_message_id: message.message_id,
-    reply_markup: {
-      inline_keyboard: [
-        [{ text: `I'm in!`, callback_data: "i_am" }],
-        [{ text: "done!", callback_data: "done" }],
-      ],
-    },
-  });
+  const transactionMessage = await context.bot.sendMessage(
+    chatId,
+    getDstsMessage(data),
+    {
+      parse_mode: "Markdown",
+      reply_to_message_id: message.message_id,
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: `I'm in!`, callback_data: "i_am" }],
+          [{ text: "done!", callback_data: "done" }],
+        ],
+      },
+    }
+  );
+
+  data.message_id = transactionMessage.message_id;
 
   // set state
-  states.set(chatId, "getDsts", data);
-  return true;
-};
-
-/**
- * this method trigers after sending /new command to user
- * @return true (progress was successful) or false (progress failed or unknow)
- */
-export const handleInit = async (
-  message: TelegramBot.Message,
-  context: Context
-): Promise<boolean> => {
-  const chatId = message.chat.id;
-  await context.bot.sendMessage(
-    chatId,
-    "please describe the transaction (< 200 chars):",
-    { reply_to_message_id: message.message_id }
-  );
-  // create state data
-  const data: IStateData = {};
-  data.creator_id = message.from?.id;
-  if (message.from) {
-    data.creator_name = generateFullName(message.from);
-  }
-  // set chip data
-  data.selecteds = [];
-  data.selecteds_name = [];
-  // set group data
-  data.group_id = `` + message.chat.id;
-  data.group_name = message.chat.title || "not defined";
-
-  states.set(chatId, "getDescription", data);
-  return true;
-};
-/**
- * this method gets the description sent by creator
- * @return true (progress was successful) or false (progress failed or unknow)
- */
-export const handleGetDescription = async (
-  message: TelegramBot.Message,
-  context: Context
-): Promise<boolean> => {
-  const chatId = message.chat.id;
-  const messageText = message.text || "no description";
-  const chatState = states.get(chatId);
-
-  // check if user has any active state
-  if (!chatState) {
-    return false;
-  }
-  // const { state, data } = chatState;
-  const state = chatState.state;
-  const data: IStateData = chatState.data;
-  // check if the user is the creator
-  if (!isFromUser(message.from, data.creator_id)) {
-    context.bot.sendMessage(chatId, "only creator can send the description", {
-      reply_to_message_id: message.message_id,
-    });
-    return true;
-  }
-  if (messageText.length > 200) {
-    context.bot.sendMessage(chatId, "description must be less than 200chars", {
-      reply_to_message_id: message.message_id,
-    });
-    return true;
-  }
-  // check if user is in getAmount state
-  if (state !== "getDescription") {
-    return false;
-  }
-  // fill the data
-  data.description = messageText;
-  await context.bot.sendMessage(chatId, "please set amount:", {
-    reply_to_message_id: message.message_id,
-  });
-
-  states.set(chatId, "getAmount", data);
-  return true;
-};
-/**
- * this is the second step after user sends the /new command
- * here we get the transaction amount from user
- * @return true (progress was successful) or false (progress failed or unknow)
- */
-export const handleGetAmount = async (
-  message: TelegramBot.Message,
-  context: Context
-): Promise<boolean> => {
-  const chatId = message.chat.id;
-  const messageText = message.text || "";
-  const chatState = states.get(chatId);
-  // check if user has any active state
-  if (!chatState) {
-    return false;
-  }
-  // const { state, data } = chatState;
-  const state = chatState.state;
-  const data: IStateData = chatState.data;
-  // check if user is in getAmount state
-  if (state !== "getAmount") {
-    return false;
-  }
-  // check if the user is the creator
-  if (!isFromUser(message.from, data.creator_id)) {
-    context.bot.sendMessage(chatId, "only creator can send the amount", {
-      reply_to_message_id: message.message_id,
-    });
-    return true;
-  }
-  // check if the sent message from user is a valid number
-  if (!/^\d+$/.test(messageText)) {
-    await context.bot.sendMessage(
-      chatId,
-      `amount *${messageText}* is invalid`,
-      {
-        parse_mode: "Markdown",
-        reply_to_message_id: message.message_id,
-      }
-    );
-    return true;
-  }
-  // update data based on
-  data.amount = parseInt(messageText);
-  await context.bot.sendMessage(chatId, getDstsMessage(data), {
-    parse_mode: "Markdown",
-    reply_to_message_id: message.message_id,
-    reply_markup: {
-      inline_keyboard: [
-        [{ text: `I'm in!`, callback_data: "i_am" }],
-        [{ text: "done!", callback_data: "done" }],
-      ],
-    },
-  });
-  states.set(chatId, "getDsts", data);
+  context.setState(chatId, data);
   return true;
 };
 /**
@@ -264,18 +130,20 @@ export const handleGetDsts = async (
   if (msg.data !== "i_am") {
     return false;
   }
-  const chatId = msg.message?.chat.id;
+  const chatId = msg.message.chat.id;
+  const messageId = msg.message.message_id;
   const userID = msg.from.id;
   const name = generateFullName(msg.from);
 
-  const stateData: { state: string; data: IStateData } = states.get(chatId);
-  if (!stateData) return true;
-  const { state, data } = stateData;
-  if (state !== "getDsts") {
+  const state = context.getState(chatId, messageId) as INewTransactionState;
+  console.log(state);
+  if (!state) return true;
+  if (state.state !== "getDsts") {
     return false;
   }
-  let selecteds = data.selecteds || [];
-  let selecteds_name = data.selecteds_name || [];
+
+  let selecteds = state.selecteds || [];
+  let selecteds_name = state.selecteds_name || [];
   if (selecteds.includes(userID)) {
     selecteds = selecteds.filter((item) => (item === userID ? null : item));
     selecteds_name = selecteds_name.filter((item) =>
@@ -292,10 +160,10 @@ export const handleGetDsts = async (
     });
   }
 
-  data.selecteds = selecteds;
-  data.selecteds_name = selecteds_name;
+  state.selecteds = selecteds;
+  state.selecteds_name = selecteds_name;
   // edit message
-  await context.bot.editMessageText(getDstsMessage(data), {
+  await context.bot.editMessageText(getDstsMessage(state), {
     message_id: msg.message?.message_id,
     chat_id: chatId,
     parse_mode: "Markdown",
@@ -306,8 +174,9 @@ export const handleGetDsts = async (
       ],
     },
   });
-  data.selecteds = selecteds;
-  states.set(chatId, "getDsts", data);
+  state.selecteds = selecteds;
+  // set state
+  context.setState(chatId, state);
   return true;
 };
 /**
@@ -326,33 +195,34 @@ export const handleDone = async (
     return false;
   }
   const chatId = msg.message.chat.id;
+  const messageId = msg.message.message_id;
   const userID = msg.from.id;
 
-  const stateData: { state: string; data: IStateData } = states.get(chatId);
-  if (!stateData) return true;
-  const { state, data } = stateData;
-  if (state !== "getDsts") {
+  const state = context.getState(chatId, messageId) as INewTransactionState;
+  if (!state) return true;
+  if (state.state !== "getDsts") {
     return false;
   }
-  if ((data.selecteds || []).length === 0) {
+  if ((state.selecteds || []).length === 0) {
     await context.bot.answerCallbackQuery(msg.id, {
       text: "somebody must be in this transaction!",
     });
     return false;
   }
-  if (data.creator_id !== userID) {
+  if (state.creator_id !== userID) {
     await context.bot.answerCallbackQuery(msg.id, {
       text: "only creator can finish the transaction",
     });
     return false;
   }
   // edit message
-  await context.bot.editMessageText(getDstsMessage(data), {
+  await context.bot.editMessageText(getDstsMessage(state), {
     message_id: msg.message.message_id,
     chat_id: chatId,
     parse_mode: "Markdown",
   });
-  await saveTransaction(data, context);
-  states.remove(chatId);
+  await saveTransaction(state, context);
+  // remove state
+  context.removeState(chatId, messageId);
   return true;
 };
