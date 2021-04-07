@@ -2,10 +2,6 @@ you can save your transactions with your friends in your telegram groups
 
 _commands_
 
-/new to create a new transaction
-
-or
-
 /new [amount] [description] to create a new transaction in one message
 
 /list to show the list of transactions
