@@ -14,4 +14,4 @@ services:
       cpu: 100m
       memory: 128Mi
     volumes:
-      - /data
+      - /usr/src/app/data
